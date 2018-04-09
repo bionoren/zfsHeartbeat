@@ -1,0 +1,8 @@
+NAME                   USED  AVAIL  REFER  MOUNTPOINT
+primarySafe                   476K  16.5G    21K  /pool
+primarySafe/clone              18K  16.5G    18K  /pool/clone
+primarySafe/home              296K  16.5G    19K  /pool/home
+primarySafe/home/marks        277K  16.5G   277K  /pool/home/marks
+primarySafe/home/marks@snap      0      -   277K  -
+primarySafe/test               18K  16.5G    18K  /test
+freenas-boot                  476K  16.0G    21K  /pool
