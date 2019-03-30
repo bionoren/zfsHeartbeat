@@ -4,14 +4,14 @@
 [[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
-  revision = "346938d642f2ec3594ed81d874461961cd0faa76"
-  version = "v1.1.0"
+  revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
+  version = "v1.1.1"
 
 [[projects]]
   branch = "master"
   name = "github.com/gregdel/pushover.git"
   packages = ["."]
-  revision = "1e03358b8e7e921df70042289c6e9ae96f8d5484"
+  revision = "15d3fef406363e87c21b8ffa5dbe430bff13ac76"
 
 [[projects]]
   name = "github.com/pmezard/go-difflib"
@@ -25,8 +25,8 @@
     "assert",
     "require"
   ]
-  revision = "12b6f73e6084dad08a7c6e575284b177ecafbc71"
-  version = "v1.2.1"
+  revision = "ffdc059bfe9ce6a4e144ba849dbedead332c6053"
+  version = "v1.3.0"
 
 [solve-meta]
   analyzer-name = "dep"

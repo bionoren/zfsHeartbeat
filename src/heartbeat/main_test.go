@@ -29,7 +29,8 @@ func MockExecuter(cmd string, args ...string) (string, error) {
 	if counters[cmd] >= len(data) {
 		return "", errors.New(fmt.Sprintf("unexepected number of calls %d for command %s", counters[cmd], cmd))
 	}
-	resp := data[counters[cmd]]
+	idx := counters[cmd]
+	resp := data[idx]
 	mutex.Lock()
 	defer mutex.Unlock()
 	counters[cmd]++
@@ -47,20 +48,25 @@ func Test_checkPoolStatus(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		file    string
-		healthy bool
+		file string
+		err  string
 	}{
-		{"testFiles/zpoolSample.txt", true},
-		{"testFiles/zpoolSample2.txt", false},
+		{"testFiles/zpoolSample.txt", ""},
+		{"testFiles/zpoolSample2.txt", "1 disks are not online"},
 	}
 
-	for _, tt := range tests {
+	for i, tt := range tests {
 		data, err := ioutil.ReadFile(tt.file)
 		require.NoError(t, err)
 		output["zpool"] = []string{string(data)}
+		counters["zpool"] = 0
 
-		healthy := checkPoolStatus(&MockNotify{}, MockExecuter)
-		assert.Equal(t, tt.healthy, healthy)
+		err = checkPoolStatus(MockExecuter)
+		if tt.err == "" {
+			assert.NoError(t, err, "Test %d:", i)
+		} else {
+			assert.EqualError(t, err, tt.err, "Test %d:", i)
+		}
 	}
 }
 
@@ -68,15 +74,15 @@ func Test_checkSmartStatus(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		file    string
-		healthy bool
+		file string
+		err  string
 	}{
-		{"testFiles/smartSample.txt", true},
-		{"testFiles/smartSample2.txt", true},
-		{"testFiles/smartSample3.txt", false},
+		{"testFiles/smartSample.txt", ""},
+		{"testFiles/smartSample2.txt", ""},
+		{"testFiles/smartSample3.txt", "smart error: disk 4: foobarted without error"},
 	}
 
-	for _, tt := range tests {
+	for i, tt := range tests {
 		data, err := ioutil.ReadFile(tt.file)
 		require.NoError(t, err)
 		numDisks := 0
@@ -87,8 +93,12 @@ func Test_checkSmartStatus(t *testing.T) {
 			output["smartctl"] = append(output["smartctl"], string(data))
 		}
 
-		healthy, _, _ := checkSmartStatus(&MockNotify{}, MockExecuter)
-		assert.Equal(t, tt.healthy, healthy)
+		err, _, _ = checkSmartStatus(MockExecuter)
+		if tt.err == "" {
+			assert.NoError(t, err, "Test %d:", i)
+		} else {
+			assert.EqualError(t, err, tt.err, "Test %d:", i)
+		}
 	}
 }
 

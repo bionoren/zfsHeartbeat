@@ -15,11 +15,11 @@ import (
 	"time"
 )
 
-const token = ""
-const user = ""
+const token = "aTKx79JZTLKy67am4hMXpsND73Effi"
+const user = "uJwFSeRyH5aNFT3TTcp2GeZYrvh185"
 
-var pools = map[string]int{} //name: numberOfDisks
-const smartThreshold = 0.05  //5% of smart tests for an individual disk must fail before we fail health check
+var pools = map[string]int{"freenas-boot": 2, "primarySafe": 6} // name: numberOfDisks
+const smartThreshold = 0.05                                     // x% of smart tests for an individual disk must fail before we fail health check
 
 type notifier interface {
 	SendMessage(message *pushover.Message, recipient *pushover.Recipient) (*pushover.Response, error)
@@ -29,24 +29,29 @@ type executer func(cmd string, args ...string) (string, error)
 
 func main() {
 	log.SetOutput(os.Stderr)
+	log.Println("Running heartbeat job...")
 	app := pushover.New(token)
 
-	healthy := checkPoolStatus(app, execute)
+	err := checkPoolStatus(execute)
 	var oldestDisk int
 	var youngestDisk int
-	if healthy {
-		healthy, oldestDisk, youngestDisk = checkSmartStatus(app, execute)
+	if err == nil {
+		err, oldestDisk, youngestDisk = checkSmartStatus(execute)
 	}
 
-	if !healthy {
+	diskUsage, err := diskUsage(app, execute)
+	if err != nil {
 		notify(app, "Health check failed!", "Check logs")
+		return
+	}
+
+	msg := fmt.Sprintf("Disk age: %.2f-%.2f years\nFree Space: %s", yearsFromHours(youngestDisk), yearsFromHours(oldestDisk), diskUsage)
+	log.Println(msg)
+	if err != nil {
+		log.Println(err.Error())
+		notify(app, "Health check failed!", err.Error())
 	} else if shouldNotify(time.Now()) {
-		diskUsage, err := diskUsage(app, execute)
-		if err != nil {
-			notify(app, "Health check failed!", "Check logs")
-			return
-		}
-		notify(app, "Heartbeat", fmt.Sprintf("Disk age: %.2f-%.2f years\nFree Space: %s", yearsFromHours(youngestDisk), yearsFromHours(oldestDisk), diskUsage))
+		notify(app, "Heartbeat", msg)
 	}
 }
 
@@ -75,12 +80,10 @@ func diskUsage(app notifier, e executer) (map[string]string, error) {
 	return usage, nil
 }
 
-func checkPoolStatus(app notifier, e executer) bool {
+func checkPoolStatus(e executer) error {
 	zStatus, err := e("zpool", "status")
 	if err != nil {
-		log.Println(err)
-		notify(app, "Internal Error", err.Error())
-		return false
+		return err
 	}
 
 	expected := len(pools) * 3
@@ -88,57 +91,59 @@ func checkPoolStatus(app notifier, e executer) bool {
 		expected += n
 	}
 	if strings.Count(zStatus, "ONLINE") != expected {
-		return false
+		return fmt.Errorf("%d disks are not online", expected-strings.Count(zStatus, "ONLINE"))
 	}
 	if !strings.Contains(zStatus, "errors: No known data errors") {
-		return false
+		return fmt.Errorf("there are known data errors: %s", zStatus)
 	}
 	if strings.Contains(zStatus, "scrub repaired") && !strings.Contains(zStatus, "with 0 errors") {
-		return false
+		return fmt.Errorf("scrub encountered errors: %s", zStatus)
 	}
 
-	return true
+	return nil
 }
 
-func checkSmartStatus(app notifier, e executer) (healthy bool, oldest int, youngest int) {
+func checkSmartStatus(e executer) (err error, oldest int, youngest int) {
 	youngest = math.MaxInt32
 
 	smartRe := regexp.MustCompile(`#\s*\d+\s*.+?\s{2,}(.+?)\s*\w*00%\s*(\d+)`)
 	for i := 0; i < 6; i++ {
-		status, err := e("smartctl", "-l", "selftest", fmt.Sprintf("/dev/ada%d", i))
+		var status string
+		status, err = e("smartctl", "-l", "selftest", fmt.Sprintf("/dev/ada%d", i))
 		if err != nil {
-			log.Println(err)
-			notify(app, "Internal Error", err.Error())
 			return
 		}
 
 		matches := smartRe.FindAllStringSubmatch(status, -1)
 		fails := 0
-		for _, match := range matches {
+		var latestFail string
+		for j := 0; j < len(matches); j++ {
+			match := matches[j]
 			if match[1] != "Completed without error" {
+				latestFail = match[1]
 				fails++
 			}
-			age, err := strconv.Atoi(match[2])
+			var age int
+			age, err = strconv.Atoi(match[2])
 			if err != nil {
-				log.Println(err.Error())
 				return
 			}
 
-			if age > oldest {
+			if j == 0 && age > oldest {
 				oldest = age
 			}
-			if age < youngest {
+			if j == 0 && age < youngest {
 				youngest = age
 			}
 		}
 
 		if float32(fails)/float32(len(matches)) >= smartThreshold {
-			notify(app, "Smart Error", fmt.Sprintf("Disk %d: %s", i, matches[0][1]))
+			err = fmt.Errorf("smart error: disk %d: %s", i, latestFail)
 			return
 		}
 	}
 
-	return true, oldest, youngest
+	return nil, oldest, youngest
 }
 
 func execute(cmd string, args ...string) (string, error) {
@@ -155,10 +160,6 @@ func execute(cmd string, args ...string) (string, error) {
 		return "", err
 	}
 
-	if err := c.Wait(); err != nil {
-		return "", err
-	}
-
 	errMsg, err := ioutil.ReadAll(stderr)
 	if err != nil {
 		log.Println("Unable to read command error output: ", err)
@@ -171,6 +172,10 @@ func execute(cmd string, args ...string) (string, error) {
 	out, err := ioutil.ReadAll(stdout)
 	if err != nil {
 		log.Println("Unable to read command output: ", err)
+		return "", err
+	}
+
+	if err := c.Wait(); err != nil {
 		return "", err
 	}
 
