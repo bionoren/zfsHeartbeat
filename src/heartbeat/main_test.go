@@ -53,6 +53,7 @@ func Test_checkPoolStatus(t *testing.T) {
 	}{
 		{"testFiles/zpoolSample.txt", ""},
 		{"testFiles/zpoolSample2.txt", "1 disks are not online"},
+		{"testFiles/zpoolSample3.txt", "1 disks are not online"}, // actual output from a disconnected disk
 	}
 
 	for i, tt := range tests {
@@ -93,9 +94,11 @@ func Test_checkSmartStatus(t *testing.T) {
 			output["smartctl"] = append(output["smartctl"], string(data))
 		}
 
-		err, _, _ = checkSmartStatus(MockExecuter)
+		err, oldest, youngest := checkSmartStatus(MockExecuter)
 		if tt.err == "" {
 			assert.NoError(t, err, "Test %d:", i)
+			assert.NotZero(t, oldest)
+			assert.NotZero(t, youngest)
 		} else {
 			assert.EqualError(t, err, tt.err, "Test %d:", i)
 		}

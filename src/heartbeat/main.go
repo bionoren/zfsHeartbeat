@@ -35,8 +35,14 @@ func main() {
 	err := checkPoolStatus(execute)
 	var oldestDisk int
 	var youngestDisk int
-	if err == nil {
-		err, oldestDisk, youngestDisk = checkSmartStatus(execute)
+	if err != nil {
+		notify(app, "Health check failed!", err.Error())
+		return
+	}
+	err, oldestDisk, youngestDisk = checkSmartStatus(execute)
+	if err != nil {
+		notify(app, "Health check failed!", "Check logs")
+		return
 	}
 
 	diskUsage, err := diskUsage(app, execute)
@@ -55,8 +61,8 @@ func main() {
 	}
 }
 
-func yearsFromHours(hours int) float32 {
-	return float32(hours) / 24 / 365.25
+func yearsFromHours(hours int) float64 {
+	return float64(hours) / 24 / 365.25
 }
 
 func shouldNotify(t time.Time) bool {
@@ -91,7 +97,7 @@ func checkPoolStatus(e executer) error {
 		expected += n
 	}
 	if strings.Count(zStatus, "ONLINE") != expected {
-		return fmt.Errorf("%d disks are not online", expected-strings.Count(zStatus, "ONLINE"))
+		return fmt.Errorf("%d disks are not online", expected-strings.Count(zStatus, "ONLINE")-strings.Count(zStatus, "DEGRADED"))
 	}
 	if !strings.Contains(zStatus, "errors: No known data errors") {
 		return fmt.Errorf("there are known data errors: %s", zStatus)
