@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/gregdel/pushover.git"
+	"github.com/gregdel/pushover"
 	"io/ioutil"
 	"log"
 	"math"
@@ -18,7 +18,7 @@ import (
 const token = "aTKx79JZTLKy67am4hMXpsND73Effi"
 const user = "uJwFSeRyH5aNFT3TTcp2GeZYrvh185"
 
-var pools = map[string]int{"freenas-boot": 2, "primarySafe": 6} // name: numberOfDisks
+var pools = map[string]int{"boot-pool": 2, "primarySafe": 6} // name: numberOfDisks
 const smartThreshold = 0.05                                     // x% of smart tests for an individual disk must fail before we fail health check
 
 type notifier interface {
