@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/gregdel/pushover"
 	"io/ioutil"
 	"log"
 	"math"
@@ -13,13 +12,15 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gregdel/pushover"
 )
 
 const token = "aTKx79JZTLKy67am4hMXpsND73Effi"
 const user = "uJwFSeRyH5aNFT3TTcp2GeZYrvh185"
 
 var pools = map[string]int{"boot-pool": 2, "primarySafe": 6} // name: numberOfDisks
-const smartThreshold = 0.05                                     // x% of smart tests for an individual disk must fail before we fail health check
+const smartThreshold = 0.05                                  // x% of smart tests for an individual disk must fail before we fail health check
 
 type notifier interface {
 	SendMessage(message *pushover.Message, recipient *pushover.Recipient) (*pushover.Response, error)
@@ -42,12 +43,14 @@ func main() {
 	err, oldestDisk, youngestDisk = checkSmartStatus(execute)
 	if err != nil {
 		notify(app, "Health check failed!", "Check logs")
+		log.Println(err.Error())
 		return
 	}
 
 	diskUsage, err := diskUsage(app, execute)
 	if err != nil {
 		notify(app, "Health check failed!", "Check logs")
+		log.Println(err.Error())
 		return
 	}
 
@@ -87,7 +90,7 @@ func diskUsage(app notifier, e executer) (map[string]string, error) {
 }
 
 func checkPoolStatus(e executer) error {
-	zStatus, err := e("zpool", "status")
+	zStatus, err := e("/sbin/zpool", "status")
 	if err != nil {
 		return err
 	}
@@ -113,9 +116,17 @@ func checkSmartStatus(e executer) (err error, oldest int, youngest int) {
 	youngest = math.MaxInt32
 
 	smartRe := regexp.MustCompile(`#\s*\d+\s*.+?\s{2,}(.+?)\s*\w*00%\s*(\d+)`)
-	for i := 0; i < 6; i++ {
+	disks := []string{
+		"sda",
+		"sdb",
+		"sdc",
+		"sdd",
+		"sde",
+		"sdf",
+	}
+	for _, disk := range disks {
 		var status string
-		status, err = e("smartctl", "-l", "selftest", fmt.Sprintf("/dev/ada%d", i))
+		status, err = e("/sbin/smartctl", "-l", "selftest", "/dev/"+disk)
 		if err != nil {
 			return
 		}
@@ -144,7 +155,7 @@ func checkSmartStatus(e executer) (err error, oldest int, youngest int) {
 		}
 
 		if float32(fails)/float32(len(matches)) >= smartThreshold {
-			err = fmt.Errorf("smart error: disk %d: %s", i, latestFail)
+			err = fmt.Errorf("smart error: disk %s: %s", disk, latestFail)
 			return
 		}
 	}

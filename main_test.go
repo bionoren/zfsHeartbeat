@@ -3,12 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/gregdel/pushover"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"sync"
 	"testing"
+
+	"github.com/gregdel/pushover"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -59,8 +60,8 @@ func Test_checkPoolStatus(t *testing.T) {
 	for i, tt := range tests {
 		data, err := ioutil.ReadFile(tt.file)
 		require.NoError(t, err)
-		output["zpool"] = []string{string(data)}
-		counters["zpool"] = 0
+		output["/sbin/zpool"] = []string{string(data)}
+		counters["/sbin/zpool"] = 0
 
 		err = checkPoolStatus(MockExecuter)
 		if tt.err == "" {
@@ -80,7 +81,7 @@ func Test_checkSmartStatus(t *testing.T) {
 	}{
 		{"testFiles/smartSample.txt", ""},
 		{"testFiles/smartSample2.txt", ""},
-		{"testFiles/smartSample3.txt", "smart error: disk 4: foobarted without error"},
+		{"testFiles/smartSample3.txt", "smart error: disk sde: foobarted without error"},
 	}
 
 	for i, tt := range tests {
@@ -91,7 +92,7 @@ func Test_checkSmartStatus(t *testing.T) {
 			numDisks += n
 		}
 		for i := 0; i < numDisks; i++ {
-			output["smartctl"] = append(output["smartctl"], string(data))
+			output["/sbin/smartctl"] = append(output["/sbin/smartctl"], string(data))
 		}
 
 		err, oldest, youngest := checkSmartStatus(MockExecuter)
