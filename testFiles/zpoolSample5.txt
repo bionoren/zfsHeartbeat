@@ -1,0 +1,32 @@
+  pool: boot-pool
+ state: ONLINE
+  scan: scrub repaired 0B in 00:00:02 with 0 errors on Sun Mar 24 03:45:03 2024
+config:
+
+	NAME           STATE     READ WRITE CKSUM
+	boot-pool      ONLINE       0     0     0
+	  mirror-0     ONLINE       0     0     0
+	    nvme0n1p3  ONLINE       0     0     0
+	    nvme1n1p3  ONLINE       0     0     0
+
+errors: No known data errors
+
+  pool: primarySafe
+ state: ONLINE
+  scan: scrub repaired 0B in 04:18:03 with 0 errors on Sun Mar 10 05:18:09 2024
+config:
+
+	NAME                                      STATE     READ WRITE CKSUM
+	primarySafe                               ONLINE       0     0     0
+	  raidz2-0                                ONLINE       0     0     0
+	    60ef726b-e8ec-11e3-aabf-d43d7ef79ff0  ONLINE       0     0     0
+	    4167d912-9102-11e2-a05e-b8975a0e7ea3  ONLINE       0     0     0
+	    e43d41b6-adcc-11e5-b06a-d43d7ef79ff0  ONLINE       0     0     0
+	    d5dab73b-464f-11ed-853b-ac1f6b82895c  ONLINE       0     0     0
+	    4263a3dc-aa5e-11e8-9954-ac1f6b82895c  ONLINE       0     0     0
+	    c9f041eb-5a83-11e5-9cd4-d43d7ef79ff0  ONLINE       0     0     0
+	spares
+	  f9aeb0c4-a208-4118-a5e3-0d01bfb36743    UNAVAIL
+	  d6b1fd5c-711c-4043-bac3-02d46fb4cb19    AVAIL
+
+errors: No known data errors

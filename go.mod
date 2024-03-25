@@ -1,6 +1,6 @@
 module github.com/bionoren/zfsHeartbeat
 
-go 1.21.0
+go 1.22
 
 require (
 	github.com/gregdel/pushover v1.2.1

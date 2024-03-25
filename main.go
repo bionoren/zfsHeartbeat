@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"math"
@@ -19,8 +21,9 @@ import (
 const token = "aTKx79JZTLKy67am4hMXpsND73Effi"
 const user = "uJwFSeRyH5aNFT3TTcp2GeZYrvh185"
 
-var pools = map[string]int{"boot-pool": 2, "primarySafe": 6} // name: numberOfDisks
-const smartThreshold = 0.05                                  // x% of smart tests for an individual disk must fail before we fail health check
+var diskUsagePools = []string{"boot-pool", "primarySafe"}
+
+const smartThreshold = 0.05 // x% of smart tests for an individual disk must fail before we fail health check
 
 type notifier interface {
 	SendMessage(message *pushover.Message, recipient *pushover.Recipient) (*pushover.Response, error)
@@ -81,7 +84,7 @@ func diskUsage(app notifier, e executer) (map[string]string, error) {
 	}
 
 	usage := make(map[string]string)
-	for poolName := range pools {
+	for _, poolName := range diskUsagePools {
 		re := regexp.MustCompile(fmt.Sprintf(`%s\s+\S+\s+(\S+)\s+`, poolName))
 		matches := re.FindStringSubmatch(diskUsage)
 		usage[poolName] = matches[1]
@@ -95,18 +98,33 @@ func checkPoolStatus(e executer) error {
 		return err
 	}
 
-	expected := len(pools) * 3
-	for _, n := range pools {
-		expected += n
+	pools, err := parsePools(zStatus)
+	if err != nil {
+		return err
 	}
-	if strings.Count(zStatus, "ONLINE") != expected {
-		return fmt.Errorf("%d disks are not online", expected-strings.Count(zStatus, "ONLINE")-strings.Count(zStatus, "DEGRADED"))
+
+	var errs []string
+	for _, p := range pools {
+		if !p.Health() {
+			errs = append(errs, p.String())
+			for _, v := range p.vdevs {
+				if !v.Healthy() {
+					errs = append(errs, v.String())
+				}
+
+				for _, disk := range v.disks {
+					if !disk.Healthy() {
+						errs = append(errs, disk.String())
+					}
+				}
+			}
+		}
+		if strings.Contains(p.scanStatus, "scrub repaired") && !strings.Contains(p.scanStatus, "with 0 errors") {
+			errs = append(errs, "scrub of %s encountered errors: %s", p.name, p.scanStatus)
+		}
 	}
-	if !strings.Contains(zStatus, "errors: No known data errors") {
-		return fmt.Errorf("there are known data errors: %s", zStatus)
-	}
-	if strings.Contains(zStatus, "scrub repaired") && !strings.Contains(zStatus, "with 0 errors") {
-		return fmt.Errorf("scrub encountered errors: %s", zStatus)
+	if len(errs) > 0 {
+		return errors.New(strings.Join(errs, "\n"))
 	}
 
 	return nil
@@ -200,6 +218,28 @@ func execute(cmd string, args ...string) (string, error) {
 }
 
 func notify(app notifier, title, msg string) *pushover.Response {
+	var cfg struct {
+		LastUpdated time.Time
+	}
+
+	f, err := os.OpenFile("/mnt/primarySafe/apps/heartbeat/heartbeat.json", os.O_RDWR|os.O_CREATE, 0777)
+	data, err := io.ReadAll(f)
+	if err != nil {
+		log.Println("error opening config file: " + err.Error())
+	} else if data != nil {
+		_ = json.Unmarshal(data, &cfg)
+		// limit error messages to every 23 hours at most
+		if cfg.LastUpdated.Add(time.Hour * 23).After(time.Now()) {
+			return nil
+		}
+	}
+
+	cfg.LastUpdated = time.Now()
+	data, _ = json.Marshal(cfg)
+	if _, err := f.Write(data); err != nil {
+		log.Println("error writing to file: " + err.Error())
+	}
+
 	recipient := pushover.NewRecipient(user)
 
 	message := pushover.NewMessage(msg)

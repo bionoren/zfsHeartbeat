@@ -1,1 +1,1 @@
-GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" heartbeat
+GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o heartbeat .

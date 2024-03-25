@@ -12,10 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func init() {
-	pools = map[string]int{"freenas-boot": 2, "primarySafe": 6}
-}
-
 var output = make(map[string][]string)
 var counters = make(map[string]int)
 var mutex sync.Mutex
@@ -53,22 +49,26 @@ func Test_checkPoolStatus(t *testing.T) {
 		err  string
 	}{
 		{"testFiles/zpoolSample.txt", ""},
-		{"testFiles/zpoolSample2.txt", "1 disks are not online"},
-		{"testFiles/zpoolSample3.txt", "1 disks are not online"}, // actual output from a disconnected disk
+		{"testFiles/zpoolSample2.txt", "pool primarySafe - ONLINE (0|0|0): errors: No known data errors\nvdev raidz2-0 - ONLINE (0|0|0)\ndisk e43d41b6-adcc-11e5-b06a-d43d7ef79ff0 - OFFLINE (0|0|0): "},
+		{"testFiles/zpoolSample3.txt", "pool primarySafe - DEGRADED (0|0|0): errors: No known data errors\nvdev raidz2-0 - DEGRADED (0|0|0)\ndisk 14803813886136010794 - UNAVAIL (0|0|0): was /dev/gptid/4167d912-9102-11e2-a05e-b8975a0e7ea3"}, // actual output from a disconnected disk
+		{"testFiles/zpoolSample4.txt", ""},
+		{"testFiles/zpoolSample5.txt", "pool primarySafe - ONLINE (0|0|0): errors: No known data errors\nvdev spares -  (0|0|0)\ndisk f9aeb0c4-a208-4118-a5e3-0d01bfb36743 - UNAVAIL: "},
 	}
 
 	for i, tt := range tests {
-		data, err := ioutil.ReadFile(tt.file)
-		require.NoError(t, err)
-		output["/sbin/zpool"] = []string{string(data)}
-		counters["/sbin/zpool"] = 0
+		t.Run(tt.file, func(t *testing.T) {
+			data, err := ioutil.ReadFile(tt.file)
+			require.NoError(t, err)
+			output["/sbin/zpool"] = []string{string(data)}
+			counters["/sbin/zpool"] = 0
 
-		err = checkPoolStatus(MockExecuter)
-		if tt.err == "" {
-			assert.NoError(t, err, "Test %d:", i)
-		} else {
-			assert.EqualError(t, err, tt.err, "Test %d:", i)
-		}
+			err = checkPoolStatus(MockExecuter)
+			if tt.err == "" {
+				assert.NoError(t, err, "Test %d:", i)
+			} else {
+				assert.EqualError(t, err, tt.err, "Test %d:", i)
+			}
+		})
 	}
 }
 
@@ -87,11 +87,7 @@ func Test_checkSmartStatus(t *testing.T) {
 	for i, tt := range tests {
 		data, err := ioutil.ReadFile(tt.file)
 		require.NoError(t, err)
-		numDisks := 0
-		for _, n := range pools {
-			numDisks += n
-		}
-		for i := 0; i < numDisks; i++ {
+		for range 8 {
 			output["/sbin/smartctl"] = append(output["/sbin/smartctl"], string(data))
 		}
 
@@ -113,7 +109,7 @@ func Test_diskUsage(t *testing.T) {
 		file     string
 		expected map[string]string
 	}{
-		{"testFiles/zfsList.txt", map[string]string{"freenas-boot": "16.0G", "primarySafe": "16.5G"}},
+		{"testFiles/zfsList.txt", map[string]string{"boot-pool": "16.0G", "primarySafe": "16.5G"}},
 	}
 
 	for _, tt := range tests {

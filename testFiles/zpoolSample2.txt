@@ -6,8 +6,8 @@ config:
 	NAME        STATE     READ WRITE CKSUM
 	freenas-boot  ONLINE       0     0     0
 	  mirror-0  ONLINE       0     0     0
-	    da1p2   ONLINE       0     0     0
-	    da0p2   ONLINE       0     0     0
+	    nvme1p2   ONLINE       0     0     0
+	    nvme0p2   ONLINE       0     0     0
 
 errors: No known data errors
 
@@ -19,11 +19,11 @@ config:
 	NAME                                            STATE     READ WRITE CKSUM
 	primarySafe                                     ONLINE       0     0     0
 	  raidz2-0                                      ONLINE       0     0     0
-	    gptid/60ef726b-e8ec-11e3-aabf-d43d7ef79ff0  ONLINE       0     0     0
-	    gptid/4167d912-9102-11e2-a05e-b8975a0e7ea3  ONLINE       0     0     0
-	    gptid/e43d41b6-adcc-11e5-b06a-d43d7ef79ff0  OFFLINE      0     0     0
-	    gptid/d2cf85c0-4737-11e3-920b-b8975a0e7ea3  ONLINE       0     0     0
-	    gptid/b74b7d26-f3aa-11e5-960e-d43d7ef79ff0  ONLINE       0     0     0
-	    gptid/c9f041eb-5a83-11e5-9cd4-d43d7ef79ff0  ONLINE       0     0     0
+	    60ef726b-e8ec-11e3-aabf-d43d7ef79ff0  ONLINE       0     0     0
+	    4167d912-9102-11e2-a05e-b8975a0e7ea3  ONLINE       0     0     0
+	    e43d41b6-adcc-11e5-b06a-d43d7ef79ff0  OFFLINE      0     0     0
+	    d2cf85c0-4737-11e3-920b-b8975a0e7ea3  ONLINE       0     0     0
+	    b74b7d26-f3aa-11e5-960e-d43d7ef79ff0  ONLINE       0     0     0
+	    c9f041eb-5a83-11e5-9cd4-d43d7ef79ff0  ONLINE       0     0     0
 
 errors: No known data errors
