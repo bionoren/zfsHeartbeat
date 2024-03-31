@@ -222,10 +222,12 @@ func notify(app notifier, title, msg string) *pushover.Response {
 		LastUpdated time.Time
 	}
 
-	f, err := os.OpenFile("/mnt/primarySafe/apps/heartbeat/heartbeat.json", os.O_RDWR|os.O_CREATE, 0777)
+	filepath := "/mnt/primarySafe/apps/heartbeat/heartbeat.json"
+	f, err := os.OpenFile(filepath, os.O_RDONLY|os.O_CREATE, 0o777)
 	data, err := io.ReadAll(f)
+	f.Close()
 	if err != nil {
-		log.Println("error opening config file: " + err.Error())
+		log.Println("error opening config file for read: " + err.Error())
 	} else if data != nil {
 		_ = json.Unmarshal(data, &cfg)
 		// limit error messages to every 23 hours at most
@@ -236,8 +238,15 @@ func notify(app notifier, title, msg string) *pushover.Response {
 
 	cfg.LastUpdated = time.Now()
 	data, _ = json.Marshal(cfg)
+	f, err = os.OpenFile(filepath, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0o777)
+	if err != nil {
+		log.Println("error opening config file for write: " + err.Error())
+	}
 	if _, err := f.Write(data); err != nil {
 		log.Println("error writing to file: " + err.Error())
+	}
+	if err := f.Close(); err != nil {
+		log.Println("error closing write file: " + err.Error())
 	}
 
 	recipient := pushover.NewRecipient(user)

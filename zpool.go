@@ -165,14 +165,20 @@ func parsePoolState(pools []pool, scanner *bufio.Scanner, line string, parseStat
 			p.status += " " + line
 		}
 	case zpoolParseScan:
-		if _, err := fmt.Sscanf(line, " scan: %s", &p.scanStatus); err != nil {
-			return nil, fmt.Errorf("parse error (%d) %s: '%s'", parseState, err, line)
+		if strings.HasPrefix(strings.TrimSpace(line), "config:") {
+			*parseState++
+			scanner.Scan() // newline
+			scanner.Scan() // pool headers
+			return nil, nil
 		}
 
-		*parseState++
-		scanner.Scan() // config:
-		scanner.Scan() // newline
-		scanner.Scan() // pool headers
+		if p.scanStatus == "" {
+			if _, err := fmt.Sscanf(line, " scan: %s", &p.scanStatus); err != nil {
+				return nil, fmt.Errorf("parse error (%d) %s: '%s'", parseState, err, line)
+			}
+		} else {
+			p.scanStatus += "\n" + strings.TrimSpace(line)
+		}
 	case zpoolParsePool:
 		var name string
 		var state string

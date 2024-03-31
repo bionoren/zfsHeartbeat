@@ -53,6 +53,7 @@ func Test_checkPoolStatus(t *testing.T) {
 		{"testFiles/zpoolSample3.txt", "pool primarySafe - DEGRADED (0|0|0): errors: No known data errors\nvdev raidz2-0 - DEGRADED (0|0|0)\ndisk 14803813886136010794 - UNAVAIL (0|0|0): was /dev/gptid/4167d912-9102-11e2-a05e-b8975a0e7ea3"}, // actual output from a disconnected disk
 		{"testFiles/zpoolSample4.txt", ""},
 		{"testFiles/zpoolSample5.txt", "pool primarySafe - ONLINE (0|0|0): errors: No known data errors\nvdev spares -  (0|0|0)\ndisk f9aeb0c4-a208-4118-a5e3-0d01bfb36743 - UNAVAIL: "},
+		{"testFiles/scrubSample.txt", ""},
 	}
 
 	for i, tt := range tests {
